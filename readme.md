@@ -17,16 +17,16 @@ CodeScribe is a command-line tool built with Go that makes managing and organizi
 
 1. Clone this repository: `git clone https://github.com/Prixix/CodeScribe.git`
 2. Navigate to the project directory: `cd CodeScribe`
-3. Build the project: `go build`
-4. Run CodeScribe: `./CodeScribe`
+3. Build the project: `go build cmd/main.gp`
+4. Rename & Run CodeScribe
 
 ## Usage
 
 CodeScribe offers an intuitive command-line interface for managing snippets. Here are some example commands:
 
-- To add a new snippet: `./CodeScribe add`
-- To search for snippets: `./CodeScribe search`
-- To copy a snippet to the clipboard: `./CodeScribe copy`
+- To add a new snippet: `./CodeScribe create`
+- To copy a snippet to the clipboard: `./CodeScribe copy [id]`
+- To show a list of all snippets: `./CodeScribe list`
 - For more commands and options, refer to the [User Guide](docs/user-guide.md).
 
 ## Documentation

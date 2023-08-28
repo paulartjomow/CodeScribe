@@ -60,6 +60,7 @@ func main() {
 				AddInputField("Description", "", 20, nil, nil).
 				AddInputField("Tags", "", 20, nil, nil).
 				AddTextArea("Code", "", 0, 10, 0, nil).
+				AddDropDown("Language", []string{"", "Go", "Python", "Java", "JavaScript", "C++", "C#", "C", "PHP", "Ruby", "Unspecified"}, 0, nil).
 				AddButton("Save", func() {
 					app.Stop()
 
@@ -78,6 +79,12 @@ func main() {
 			description := form.GetFormItemByLabel("Description").(*tview.InputField).GetText()
 			tags := form.GetFormItemByLabel("Tags").(*tview.InputField).GetText()
 			code := form.GetFormItemByLabel("Code").(*tview.TextArea).GetText()
+
+			// Check if the title is empty or code is empty
+			if title == "" || code == "" {
+				fmt.Println("Title and/or code cannot be empty!")
+				return
+			}
 
 			// Create the snippet
 			err1 := snippetManager.CreateSnippet(title, description, tags, code)

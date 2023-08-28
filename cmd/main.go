@@ -1,9 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/Prixix/CodeScribe/internal/snippet"
 	"github.com/Prixix/CodeScribe/pkg/clipboard"
@@ -26,6 +30,17 @@ func main() {
 		fmt.Println("Error initializing the database schema:", err)
 		os.Exit(1)
 	}
+
+	languages, err := readLanguagesFromJSON("languages.json")
+	if err != nil {
+		fmt.Println("Error reading languages:", err)
+		// Try downloading the languages from GitHub
+		fmt.Println("Downloading languages from GitHub...")
+		downloadLanguagesFromGitHub("languages.json")
+		os.Exit(1)
+	}
+
+	languages = append([]string{""}, languages...)
 
 	snippetManager := snippet.NewManager(db)
 
@@ -60,7 +75,7 @@ func main() {
 				AddInputField("Description", "", 20, nil, nil).
 				AddInputField("Tags", "", 20, nil, nil).
 				AddTextArea("Code", "", 0, 10, 0, nil).
-				AddDropDown("Language", []string{"", "Go", "Python", "Java", "JavaScript", "C++", "C#", "C", "PHP", "Ruby", "Unspecified"}, 0, nil).
+				AddDropDown("Language", languages, 0, nil).
 				AddButton("Save", func() {
 					app.Stop()
 
@@ -79,6 +94,7 @@ func main() {
 			description := form.GetFormItemByLabel("Description").(*tview.InputField).GetText()
 			tags := form.GetFormItemByLabel("Tags").(*tview.InputField).GetText()
 			code := form.GetFormItemByLabel("Code").(*tview.TextArea).GetText()
+			_, language := form.GetFormItemByLabel("Language").(*tview.DropDown).GetCurrentOption()
 
 			// Check if the title is empty or code is empty
 			if title == "" || code == "" {
@@ -87,7 +103,7 @@ func main() {
 			}
 
 			// Create the snippet
-			err1 := snippetManager.CreateSnippet(title, description, tags, code)
+			err1 := snippetManager.CreateSnippet(title, description, tags, code, language)
 			if err1 != nil {
 				fmt.Println("Error creating snippet:", err)
 			} else {
@@ -128,6 +144,8 @@ func main() {
 		Use:   "list",
 		Short: "List all saved snippets with IDs",
 		Run: func(cmd *cobra.Command, args []string) {
+			lang, _ := cmd.Flags().GetString("language")
+
 			snippets, err := snippetManager.GetAllSnippets()
 			if err != nil {
 				fmt.Println("Error fetching snippets:", err)
@@ -145,15 +163,22 @@ func main() {
 				ShowSecondaryText(true)
 
 			for _, s := range snippets {
-				// Add the snippet and its ID in the brackets at the beginning
-				list.AddItem(fmt.Sprintf("[%d] %s", s.ID, s.Title), s.Description, ' ', func() {
-					if err := clipboard.CopyToClipboard(s.Code); err != nil {
-						fmt.Println("Error copying to clipboard:", err)
-					} else {
-						fmt.Println("Snippet copied to clipboard!")
-					}
-					app.Stop()
-				})
+				if lang != "" && !strings.EqualFold(lang, s.Language) {
+					continue
+				}
+
+				language := s.Language
+				if language != "" {
+					language = fmt.Sprintf("(%s)", language)
+				}
+
+				list.AddItem(fmt.Sprintf("[blue][%d] [white]%s", s.ID, s.Title),
+					fmt.Sprintf("[grey]%s [yellow]%s", language, s.Description), ' ', func() {
+						if err := clipboard.CopyToClipboard(s.Code); err != nil {
+							fmt.Println("Error copying to clipboard:", err)
+						}
+						app.Stop()
+					})
 			}
 
 			list.AddItem("Back", "Return to main menu", 'q', func() {
@@ -165,6 +190,7 @@ func main() {
 			}
 		},
 	}
+	listCmd.Flags().String("language", "", "Filter snippets by programming language")
 
 	rootCmd.AddCommand(copyCmd)
 	rootCmd.AddCommand(createCmd)
@@ -174,4 +200,45 @@ func main() {
 		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
+}
+
+func downloadLanguagesFromGitHub(s string) {
+	url := "https://raw.githubusercontent.com/Prixix/CodeScribe/main/languages.json"
+	if err := downloadFile(s, url); err != nil {
+		fmt.Println("Error downloading file:", err)
+		os.Exit(1)
+	}
+}
+
+func downloadFile(filename string, url string) error {
+	// Downlaod raw file from internet
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+
+	// Create the file
+	out, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func readLanguagesFromJSON(filename string) ([]string, error) {
+	var languages []string
+
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(data, &languages); err != nil {
+		return nil, err
+	}
+
+	return languages, nil
 }

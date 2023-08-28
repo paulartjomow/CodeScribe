@@ -14,6 +14,7 @@ type Snippet struct {
 	Description string
 	Tags        string
 	Code        string
+	Language    string
 }
 
 type Database struct {
@@ -35,15 +36,15 @@ func (db *Database) Close() error {
 
 func (db *Database) CreateSnippet(snippet Snippet) (int64, error) {
 	stmt, err := db.conn.Prepare(`
-		INSERT INTO snippets (title, description, tags, code)
-		VALUES (?, ?, ?, ?)
+		INSERT INTO snippets (title, description, tags, code, language)
+		VALUES (?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return -1, err
 	}
 	defer stmt.Close()
 
-	result, err := stmt.Exec(snippet.Title, snippet.Description, snippet.Tags, snippet.Code)
+	result, err := stmt.Exec(snippet.Title, snippet.Description, snippet.Tags, snippet.Code, snippet.Language)
 	if err != nil {
 		return -1, err
 	}
@@ -55,12 +56,12 @@ func (db *Database) GetSnippetByID(id int) (Snippet, error) {
 	var snippet Snippet
 
 	row := db.conn.QueryRow(`
-		SELECT id, title, description, tags, code
+		SELECT id, title, description, tags, code, language
 		FROM snippets
 		WHERE id = ?
 	`, id)
 
-	err := row.Scan(&snippet.ID, &snippet.Title, &snippet.Description, &snippet.Tags, &snippet.Code)
+	err := row.Scan(&snippet.ID, &snippet.Title, &snippet.Description, &snippet.Tags, &snippet.Code, &snippet.Language)
 	if err != nil {
 		return Snippet{}, err
 	}
@@ -69,7 +70,7 @@ func (db *Database) GetSnippetByID(id int) (Snippet, error) {
 
 func (db *Database) SearchSnippets(keyword string) ([]Snippet, error) {
 	query := fmt.Sprintf(`
-		SELECT id, title, description, tags, code
+		SELECT id, title, description, tags, code, language
 		FROM snippets
 		WHERE title LIKE '%%%s%%' OR description LIKE '%%%s%%' OR tags LIKE '%%%s%%'
 	`, keyword, keyword, keyword)
@@ -84,7 +85,7 @@ func (db *Database) SearchSnippets(keyword string) ([]Snippet, error) {
 
 	for rows.Next() {
 		var snippet Snippet
-		err := rows.Scan(&snippet.ID, &snippet.Title, &snippet.Description, &snippet.Tags, &snippet.Code)
+		err := rows.Scan(&snippet.ID, &snippet.Title, &snippet.Description, &snippet.Tags, &snippet.Code, &snippet.Language)
 		if err != nil {
 			log.Println("Error scanning row:", err)
 			return nil, err
@@ -97,7 +98,7 @@ func (db *Database) SearchSnippets(keyword string) ([]Snippet, error) {
 
 func (db *Database) GetAllSnippets(snippets *[]Snippet) error {
 	rows, err := db.conn.Query(`
-		SELECT id, title, description, tags, code
+		SELECT id, title, description, tags, code, language
 		FROM snippets
 	`)
 	if err != nil {
@@ -107,7 +108,7 @@ func (db *Database) GetAllSnippets(snippets *[]Snippet) error {
 
 	for rows.Next() {
 		var snippet Snippet
-		err := rows.Scan(&snippet.ID, &snippet.Title, &snippet.Description, &snippet.Tags, &snippet.Code)
+		err := rows.Scan(&snippet.ID, &snippet.Title, &snippet.Description, &snippet.Tags, &snippet.Code, &snippet.Language)
 		if err != nil {
 			log.Println("Error scanning row:", err)
 			return err
@@ -131,7 +132,8 @@ func InitializeSchema(dbPath string) error {
 			title TEXT NOT NULL,
 			description TEXT,
 			tags TEXT,
-			code TEXT
+			code TEXT,
+			language TEXT
 		);
 	`)
 

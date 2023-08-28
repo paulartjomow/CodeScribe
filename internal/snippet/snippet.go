@@ -12,12 +12,13 @@ func NewManager(db *database.Database) *Manager {
 	return &Manager{db: db}
 }
 
-func (m *Manager) CreateSnippet(title, description, tags, code string) error {
+func (m *Manager) CreateSnippet(title, description, tags, code string, language string) error {
 	snippet := database.Snippet{
 		Title:       title,
 		Description: description,
 		Tags:        tags,
 		Code:        code,
+		Language:    language,
 	}
 
 	_, err := m.db.CreateSnippet(snippet)

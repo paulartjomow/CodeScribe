@@ -8,6 +8,7 @@ import (
 	"github.com/Prixix/CodeScribe/internal/snippet"
 	"github.com/Prixix/CodeScribe/pkg/clipboard"
 	"github.com/Prixix/CodeScribe/pkg/database"
+	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +21,11 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
+
+	if err := database.InitializeSchema(dbPath); err != nil {
+		fmt.Println("Error initializing the database schema:", err)
+		os.Exit(1)
+	}
 
 	snippetManager := snippet.NewManager(db)
 
@@ -37,24 +43,50 @@ func main() {
 		Use:   "create",
 		Short: "Create a new code snippet",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Get input from the user for snippet details
-			var title, description, tags, code string
-			fmt.Print("Enter snippet title: ")
-			fmt.Scanln(&title)
-			fmt.Print("Enter snippet description: ")
-			fmt.Scanln(&description)
-			fmt.Print("Enter snippet tags: ")
-			fmt.Scanln(&tags)
-			fmt.Print("Enter code snippet: ")
-			fmt.Scanln(&code)
-
-			// Create the snippet in the database
-			err := snippetManager.CreateSnippet(title, description, tags, code)
+			dbPath := "snippets.db"
+			db, err := database.NewDatabase(dbPath)
 			if err != nil {
+				fmt.Println("Error initializing the database:", err)
+				os.Exit(1)
+			}
+			defer db.Close()
+
+			snippetManager := snippet.NewManager(db)
+
+			app := tview.NewApplication()
+
+			form := tview.NewForm().
+				AddInputField("Title", "", 20, nil, nil).
+				AddInputField("Description", "", 20, nil, nil).
+				AddInputField("Tags", "", 20, nil, nil).
+				AddTextArea("Code", "", 0, 10, 0, nil).
+				AddButton("Save", func() {
+					app.Stop()
+
+				}).AddButton("Cancel", func() {
+				app.Stop()
+			})
+
+			form.SetBorder(true).SetTitle("Create Snippet").SetTitleAlign(tview.AlignLeft)
+
+			if err := app.SetRoot(form, true).Run(); err != nil {
+				fmt.Println("Error:", err)
+			}
+
+			// Create snippet in snippetmanager
+			title := form.GetFormItemByLabel("Title").(*tview.InputField).GetText()
+			description := form.GetFormItemByLabel("Description").(*tview.InputField).GetText()
+			tags := form.GetFormItemByLabel("Tags").(*tview.InputField).GetText()
+			code := form.GetFormItemByLabel("Code").(*tview.TextArea).GetText()
+
+			// Create the snippet
+			err1 := snippetManager.CreateSnippet(title, description, tags, code)
+			if err1 != nil {
 				fmt.Println("Error creating snippet:", err)
 			} else {
 				fmt.Println("Snippet created successfully!")
 			}
+
 		},
 	}
 
@@ -85,8 +117,51 @@ func main() {
 		},
 	}
 
+	var listCmd = &cobra.Command{
+		Use:   "list",
+		Short: "List all saved snippets with IDs",
+		Run: func(cmd *cobra.Command, args []string) {
+			snippets, err := snippetManager.GetAllSnippets()
+			if err != nil {
+				fmt.Println("Error fetching snippets:", err)
+				return
+			}
+
+			if len(snippets) == 0 {
+				fmt.Println("No snippets found.")
+				return
+			}
+
+			app := tview.NewApplication()
+
+			list := tview.NewList().
+				ShowSecondaryText(true)
+
+			for _, s := range snippets {
+				// Add the snippet and its ID in the brackets at the beginning
+				list.AddItem(fmt.Sprintf("[%d] %s", s.ID, s.Title), s.Description, ' ', func() {
+					if err := clipboard.CopyToClipboard(s.Code); err != nil {
+						fmt.Println("Error copying to clipboard:", err)
+					} else {
+						fmt.Println("Snippet copied to clipboard!")
+					}
+					app.Stop()
+				})
+			}
+
+			list.AddItem("Back", "Return to main menu", 'q', func() {
+				app.Stop()
+			})
+
+			if err := app.SetRoot(list, true).Run(); err != nil {
+				fmt.Println("Error:", err)
+			}
+		},
+	}
+
 	rootCmd.AddCommand(copyCmd)
 	rootCmd.AddCommand(createCmd)
+	rootCmd.AddCommand(listCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println("Error:", err)

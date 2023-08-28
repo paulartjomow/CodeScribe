@@ -36,6 +36,11 @@ func (m *Manager) SearchSnippets(keyword string) ([]database.Snippet, error) {
 	return m.db.SearchSnippets(keyword)
 }
 
+func (m *Manager) GetAllSnippets() ([]database.Snippet, error) {
+	var snippets []database.Snippet
+	return snippets, m.db.GetAllSnippets(&snippets)
+}
+
 func InitializeSchema(dbPath string) error {
 	return database.InitializeSchema(dbPath)
 }

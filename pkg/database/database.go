@@ -95,6 +95,29 @@ func (db *Database) SearchSnippets(keyword string) ([]Snippet, error) {
 	return snippets, nil
 }
 
+func (db *Database) GetAllSnippets(snippets *[]Snippet) error {
+	rows, err := db.conn.Query(`
+		SELECT id, title, description, tags, code
+		FROM snippets
+	`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var snippet Snippet
+		err := rows.Scan(&snippet.ID, &snippet.Title, &snippet.Description, &snippet.Tags, &snippet.Code)
+		if err != nil {
+			log.Println("Error scanning row:", err)
+			return err
+		}
+		*snippets = append(*snippets, snippet)
+	}
+
+	return nil
+}
+
 func InitializeSchema(dbPath string) error {
 	conn, err := sql.Open("sqlite3", dbPath)
 	if err != nil {

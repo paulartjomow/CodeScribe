@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	dbPath := "snippets.db" // Adjust the database path as needed
+	dbPath := "snippets.db"
 
 	db, err := database.NewDatabase(dbPath)
 	if err != nil {
@@ -34,7 +34,6 @@ func main() {
 	languages, err := readLanguagesFromJSON("languages.json")
 	if err != nil {
 		fmt.Println("Error reading languages:", err)
-		// Try downloading the languages from GitHub
 		fmt.Println("Downloading languages from GitHub...")
 		downloadLanguagesFromGitHub("languages.json")
 		os.Exit(1)
@@ -49,7 +48,6 @@ func main() {
 		Short: "A tool to manage code snippets",
 		Long:  "CodeScribe is a command-line tool to help programmers organize and manage their code snippets.",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Display a help message
 			cmd.Help()
 		},
 	}
@@ -89,20 +87,17 @@ func main() {
 				fmt.Println("Error:", err)
 			}
 
-			// Create snippet in snippetmanager
 			title := form.GetFormItemByLabel("Title").(*tview.InputField).GetText()
 			description := form.GetFormItemByLabel("Description").(*tview.InputField).GetText()
 			tags := form.GetFormItemByLabel("Tags").(*tview.InputField).GetText()
 			code := form.GetFormItemByLabel("Code").(*tview.TextArea).GetText()
 			_, language := form.GetFormItemByLabel("Language").(*tview.DropDown).GetCurrentOption()
 
-			// Check if the title is empty or code is empty
 			if title == "" || code == "" {
 				fmt.Println("Title and/or code cannot be empty!")
 				return
 			}
 
-			// Create the snippet
 			err1 := snippetManager.CreateSnippet(title, description, tags, code, language)
 			if err1 != nil {
 				fmt.Println("Error creating snippet:", err)
@@ -136,6 +131,66 @@ func main() {
 				fmt.Println("Error copying to clipboard:", err)
 			} else {
 				fmt.Println("Snippet copied to clipboard!")
+			}
+		},
+	}
+
+	var editCmd = &cobra.Command{
+		Use:   "edit [snippet-id]",
+		Short: "Edit a snippet",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			snippetIDInt, err := strconv.Atoi(args[0])
+
+			if err != nil {
+				fmt.Println("Invalid snippet ID:", err)
+				return
+			}
+
+			snippet, err := snippetManager.GetSnippetByID(snippetIDInt)
+
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
+
+			app := tview.NewApplication()
+
+			form := tview.NewForm().
+				AddInputField("Title", snippet.Title, 20, nil, nil).
+				AddInputField("Description", snippet.Description, 20, nil, nil).
+				AddInputField("Tags", snippet.Tags, 20, nil, nil).
+				AddTextArea("Code", snippet.Code, 0, 10, 0, nil).
+				AddDropDown("Language", languages, 0, nil).
+				AddButton("Save", func() {
+					app.Stop()
+
+				}).AddButton("Cancel", func() {
+				app.Stop()
+			})
+
+			form.SetBorder(true).SetTitle("Edit Snippet").SetTitleAlign(tview.AlignLeft)
+
+			if err := app.SetRoot(form, true).Run(); err != nil {
+				fmt.Println("Error:", err)
+			}
+
+			title := form.GetFormItemByLabel("Title").(*tview.InputField).GetText()
+			description := form.GetFormItemByLabel("Description").(*tview.InputField).GetText()
+			tags := form.GetFormItemByLabel("Tags").(*tview.InputField).GetText()
+			code := form.GetFormItemByLabel("Code").(*tview.TextArea).GetText()
+			_, language := form.GetFormItemByLabel("Language").(*tview.DropDown).GetCurrentOption()
+
+			if title == "" || code == "" {
+				fmt.Println("Title and/or code cannot be empty!")
+				return
+			}
+
+			err1 := snippetManager.UpdateSnippet(snippetIDInt, title, description, tags, code, language)
+			if err1 != nil {
+				fmt.Println("Error updating snippet:", err)
+			} else {
+				fmt.Println("Snippet updated successfully!")
 			}
 		},
 	}
@@ -181,6 +236,11 @@ func main() {
 					})
 			}
 
+			list.AddItem("New", "Create a new snippet", 'n', func() {
+				app.Stop()
+				createCmd.Run(cmd, args)
+			})
+
 			list.AddItem("Back", "Return to main menu", 'q', func() {
 				app.Stop()
 			})
@@ -195,6 +255,7 @@ func main() {
 	rootCmd.AddCommand(copyCmd)
 	rootCmd.AddCommand(createCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(editCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println("Error:", err)
@@ -211,19 +272,16 @@ func downloadLanguagesFromGitHub(s string) {
 }
 
 func downloadFile(filename string, url string) error {
-	// Downlaod raw file from internet
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
 
-	// Create the file
 	out, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 
-	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	return err
 }

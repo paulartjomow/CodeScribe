@@ -119,6 +119,25 @@ func (db *Database) GetAllSnippets(snippets *[]Snippet) error {
 	return nil
 }
 
+func (db *Database) UpdateSnippet(id int, snippet Snippet) error {
+	stmt, err := db.conn.Prepare(`
+		UPDATE snippets
+		SET title = ?, description = ?, tags = ?, code = ?, language = ?
+		WHERE id = ?
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(snippet.Title, snippet.Description, snippet.Tags, snippet.Code, snippet.Language, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func InitializeSchema(dbPath string) error {
 	conn, err := sql.Open("sqlite3", dbPath)
 	if err != nil {

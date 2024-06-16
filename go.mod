@@ -4,12 +4,7 @@ go 1.20
 
 require (
 	github.com/mattn/go-sqlite3 v1.14.17
-	github.com/spf13/cobra v1.7.0
-)
-
-require (
-	github.com/gdamore/tcell v1.4.0 // indirect
-	github.com/rivo/tcell v1.0.0 // indirect
+	github.com/spf13/cobra v1.8.1
 )
 
 require (

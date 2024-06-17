@@ -29,14 +29,6 @@ CodeScribe offers an intuitive command-line interface for managing snippets. Her
 - To show a list of all snippets: `./CodeScribe list`
 - For more commands and options, refer to the [User Guide](docs/user-guide.md).
 
-## Documentation
-
-For more detailed information on installation, usage, and advanced features, check out the [User Guide](docs/user-guide.md).
-
-## Contributing
-
-Contributions are welcome! If you'd like to improve CodeScribe or fix any issues, please refer to our [Contribution Guidelines](CONTRIBUTING.md).
-
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
